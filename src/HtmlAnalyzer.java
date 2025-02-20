@@ -1,45 +1,62 @@
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class HtmlAnalyzer {
     public static void main(String[] args) {
         try {
-            String teste = GetHTML(URI.create(args[0]));
-            Pattern pattern = Pattern.compile("<(.*?)>", Pattern.DOTALL);
-            Matcher matcher = pattern.matcher(teste);
-            List<String> tags = new ArrayList<String>();
-            Iterator<String> iterator;
+            String html = GetHTML(URI.create(args[0]));
+            System.out.println(findDeepestElement(html));
 
-            while (matcher.find()) {
-                tags.add(matcher.group(1));
-                iterator = tags.iterator();
-                if (tags.contains("html") && tags.contains("/html")) {
-                    System.out.println(tags.toString());
-                }
-            }
-
-//            System.out.println(teste);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("URL connection error");;
         }
     }
 
-    private static String GetHTML (URI uri) {
-        try {
-            BufferedReader br = new BufferedReader(new InputStreamReader((uri.toURL()).openStream()));
-            StringBuilder sb = new StringBuilder();
-            while (br.ready()) {
-                sb.append(br.readLine().indent(0));
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            throw new Error("URL connection error");
+    private static String GetHTML (URI uri) throws Exception{
+        BufferedReader br = new BufferedReader(new InputStreamReader((uri.toURL()).openStream()));
+        StringBuilder sb = new StringBuilder();
+        while (br.ready()) {
+            sb.append(br.readLine().indent(0));
         }
+        return sb.toString();
+    }
+
+    private static String findDeepestElement(String html) {
+            List<String> lines = Arrays.asList(html.split("\n\s*"));
+            LinkedList<String> tags = new LinkedList<>();
+            String deepestElement = "";
+            int maxDepth = 0, currentDepth = 0;
+
+            for (String line : lines) {
+                if (line.startsWith("<")) {
+                    if(line.endsWith(">")) {
+                        if (line.startsWith("</")) {
+                            if (tags.isEmpty() || !tags.contains(line.substring(2, line.length() - 1))) {
+                                return("malformed HTML");
+
+                            }
+                            tags.pop();
+                            currentDepth--;
+                        } else {
+                            tags.push(line.substring(1, line.length() - 1));
+                            currentDepth++;
+                        }
+                    } else {
+                        return("malformed HTML");
+                    }
+                } else {
+                    if (currentDepth > maxDepth) {
+                        maxDepth = currentDepth;
+                        deepestElement = line;
+                    }
+                }
+
+            }
+
+            return tags.isEmpty() ? deepestElement : "malformed HTML";
     }
 }
